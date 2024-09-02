@@ -14,6 +14,10 @@
 #include "QGCTemporaryFile.h"
 #include "QGCToolbox.h"
 
+extern "C" {
+#include "xplaneConnect.h"
+}
+
 #include <QtCore/QString>
 #include <QtCore/QByteArray>
 #include <QtCore/QLoggingCategory>
@@ -146,6 +150,10 @@ signals:
     /// Emitted when a telemetry log is started to save.
     void checkTelemetrySavePath(void);
 
+//    /// Formats the message according to the XPC protocol to send it with UDPLink to XPlane
+//    void MAVLinkProtocol::sendPosiMessage(UDPLink* udpLink, double lat, double lon, double alt, double pitch, double roll, double yaw, double gear);
+
+
 private slots:
     void _vehicleCountChanged(void);
 
@@ -164,5 +172,13 @@ private:
 
     LinkManager*            _linkMgr;
     MultiVehicleManager*    _multiVehicleManager;
+
+    // Added to handle communication via XPC
+    XPCSocket _sock;
+    bool _sockInitialized;  // To track whether the socket has been initialized
+    void initializeSocketIfNeeded();
+
+    /// Function to handle the HIL_STATE_QUATERNION message case and send it to X-Plane 12 via the XPC plugin
+    void handleHilStateQuaternion(const mavlink_message_t& message);
 };
 

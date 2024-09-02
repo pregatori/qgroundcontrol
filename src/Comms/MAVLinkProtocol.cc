@@ -13,6 +13,11 @@
 #include "MultiVehicleManager.h"
 #include "SettingsManager.h"
 #include "QGCLoggingCategory.h"
+// #include "UDPLink.h"  // Ensure this is included
+
+extern "C" {
+#include "xplaneConnect.h"
+}
 
 #include <QtCore/QSettings>
 #include <QtCore/QStandardPaths>
@@ -21,6 +26,9 @@
 #include <QtCore/QFileInfo>
 
 #include <QtQml/QtQml>
+
+#include <QByteArray> // used with UDPLink
+#include <QDataStream> // used with UDPLink
 
 Q_DECLARE_METATYPE(mavlink_message_t)
 
@@ -50,6 +58,7 @@ MAVLinkProtocol::MAVLinkProtocol(QGCApplication* app, QGCToolbox* toolbox)
     , _tempLogFile(QString("%2.%3").arg(_tempLogFileTemplate).arg(_logFileExtension))
     , _linkMgr(nullptr)
     , _multiVehicleManager(nullptr)
+    , _sockInitialized(false)
 {
     memset(totalReceiveCounter, 0, sizeof(totalReceiveCounter));
     memset(totalLossCounter,    0, sizeof(totalLossCounter));
@@ -57,10 +66,21 @@ MAVLinkProtocol::MAVLinkProtocol(QGCApplication* app, QGCToolbox* toolbox)
     memset(firstMessage,        1, sizeof(firstMessage));
     memset(&_status,            0, sizeof(_status));
     memset(&_message,           0, sizeof(_message));
+
+    // Initialize the XPCSocket struct fields
+    std::memset(&_sock, 0, sizeof(XPCSocket));  // Zero out the structure
+    _sock.port = 0;  // Local port (could be set to a specific value if needed)
+    std::strcpy(_sock.xpIP, "127.0.0.1");  // Default X-Plane IP
+    _sock.xpPort = 49009;  // Default X-Plane port
 }
 
 MAVLinkProtocol::~MAVLinkProtocol()
 {
+    // Clean up and close the socket
+    if (_sockInitialized) {
+        closeUDP(_sock);  // Pass the pointer to the struct to close the socket
+    }
+
     storeSettings();
     _closeLogFile();
 }
@@ -174,8 +194,47 @@ void MAVLinkProtocol::logSentBytes(LinkInterface* link, QByteArray b){
             _logSuspendError = true;
         }
     }
-
 }
+
+void MAVLinkProtocol::initializeSocketIfNeeded() {
+    if (!_sockInitialized) {
+        // Open the socket with specific IP and port
+        _sock = openUDP("127.0.0.1");  // Replace with actual IP and port if needed
+        if (_sock.sock < 0) {  // Checking if the socket was initialized properly
+            qDebug() << "Failed to open UDP socket.";
+            return;
+        }
+        _sockInitialized = true;  // Mark socket as initialized
+    }
+}
+
+
+void MAVLinkProtocol::handleHilStateQuaternion(const mavlink_message_t& message) {
+    mavlink_hil_state_quaternion_t hilState;
+    mavlink_msg_hil_state_quaternion_decode(&message, &hilState);
+
+    // Convert the received message to the required POSI format
+    double lat = hilState.lat / 1E7;
+    double lon = hilState.lon / 1E7;
+    double alt = hilState.alt / 1000.0;  // Convert from mm to meters
+    double pitch = 0.0;  // Placeholder, update with actual data if available
+    double roll = 0.0;   // Placeholder, update with actual data if available
+    double yaw = 0.0;    // Placeholder, update with actual data if available
+    double gear = 1.0;   // Gear down by default
+
+    initializeSocketIfNeeded();  // Ensure socket is initialized before use
+
+    if (_sockInitialized) {
+        double values[7] = {lat, lon, alt, pitch, roll, yaw, 1.0};  // Example values
+        int result = sendPOSI(_sock, values, 7, 0);
+        if (result < 0) {
+            qDebug() << "Failed to send POSI command. Error code:" << result;
+        }
+    } else {
+        qDebug() << "Socket not initialized.";
+    }
+}
+
 
 /**
  * This method parses all incoming bytes and constructs a MAVLink packet.
@@ -336,7 +395,19 @@ void MAVLinkProtocol::receiveBytes(LinkInterface* link, QByteArray b)
                 mavlink_high_latency2_t highLatency2;
                 mavlink_msg_high_latency2_decode(&_message, &highLatency2);
                 emit vehicleHeartbeatInfo(link, _message.sysid, _message.compid, highLatency2.autopilot, highLatency2.type);
+            } else if (_message.msgid == MAVLINK_MSG_ID_HIL_STATE_QUATERNION) { // Hugo added code
+                _startLogging();
+
+                handleHilStateQuaternion(_message);
             }
+
+
+                /* Probably not needed as the
+                mavlink_hil_state_quaternion_t hilStateQuaternion;
+                mavlink_msg_hil_state_quaternion_decode(&_message, &hilStateQuaternion);
+                // HIL_STATE_QUATERNION does not provide autopilot or type information, generic is our safest bet
+                emit vehicleHeartbeatInfo(link, _message.sysid, _message.compid, MAV_AUTOPILOT_GENERIC, MAV_TYPE_GENERIC);
+                */
 
 #if 0
             // Given the current state of SiK Radio firmwares there is no way to make the code below work.
@@ -534,4 +605,7 @@ void MAVLinkProtocol::deleteTempLogFiles(void)
         QFile::remove(fileInfo.filePath());
     }
 }
+
+
+
 

@@ -294,6 +294,14 @@ if(WIN32)
     )
     add_compile_definitions(_USE_MATH_DEFINES)
 elseif(MACOS)
+
+    # Specify the architectures to build for (ensures compatibility to both mac chips)
+    set(CMAKE_OSX_ARCHITECTURES "x86_64; arm64" CACHE STRING "Build architectures for macOS")
+    set(APPLE_MULTIPLE_ARCHITECTURES ON)
+
+    # If not already set, make sure to specify minimum macOS version (optional)
+    set(CMAKE_OSX_DEPLOYMENT_TARGET "10.14" CACHE STRING "Minimum OS X deployment version")
+
     set(MACOSX_BUNDLE_ICON_FILE "macx.icns")
     set(app_icon_macos "${QGC_MACOS_ICON_PATH}/macx.icns")
     set_source_files_properties(${app_icon_macos}

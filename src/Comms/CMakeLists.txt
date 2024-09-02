@@ -19,6 +19,14 @@ qt_add_library(Comms STATIC
     UdpIODevice.h
     UDPLink.cc
     UDPLink.h
+
+#    # Add the XPC source file
+#    ${CMAKE_SOURCE_DIR}/src/XPlaneConnect/xplaneConnect.c
+#    ${CMAKE_SOURCE_DIR}/src/XPlaneConnect/xplaneConnect.h
+
+    xplaneConnect.c
+    xplaneConnect.h
+
 )
 
 target_link_libraries(Comms
@@ -105,3 +113,26 @@ if(QGC_ZEROCONF_ENABLED)
     target_link_libraries(Comms PRIVATE qmdnsengine)
     target_compile_definitions(Comms PUBLIC QGC_ZEROCONF_ENABLED)
 endif()
+
+############# XPlaneConnect
+
+cmake_minimum_required(VERSION 2.8.4)
+
+set(LIBXPLANECONNECT_SRC xplaneConnect.c)
+
+add_library(xplaneconnect_dynamic SHARED ${LIBXPLANECONNECT_SRC})
+add_library(xplaneconnect_static  STATIC ${LIBXPLANECONNECT_SRC})
+
+set_target_properties(xplaneconnect_dynamic PROPERTIES OUTPUT_NAME "xplaneconnect")
+set_target_properties(xplaneconnect_dynamic PROPERTIES VERSION 1.2 SOVERSION 1)
+
+set_target_properties(xplaneconnect_static  PROPERTIES OUTPUT_NAME "xplaneconnect")
+
+set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
+
+install(TARGETS xplaneconnect_dynamic xplaneconnect_static
+        LIBRARY DESTINATION lib
+        ARCHIVE DESTINATION lib)
+
+install(FILES xplaneConnect.h DESTINATION include/xplaneConnect)
+
