@@ -76,7 +76,7 @@ void printError(char *functionName, char *format, ...)
 /*****************************************************************************/
 XPCSocket openUDP(const char *xpIP)
 {
-	return aopenUDP(xpIP, 49009, 0);
+    return aopenUDP(xpIP, 49010, 0); // Default receive UDP Port in XPlane 49010
 }
 
 XPCSocket aopenUDP(const char *xpIP, unsigned short xpPort, unsigned short port)

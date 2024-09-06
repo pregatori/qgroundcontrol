@@ -13,7 +13,7 @@
 #include "MultiVehicleManager.h"
 #include "SettingsManager.h"
 #include "QGCLoggingCategory.h"
-// #include "UDPLink.h"  // Ensure this is included
+#include "math.h"
 
 extern "C" {
 #include "xplaneConnect.h"
@@ -199,7 +199,7 @@ void MAVLinkProtocol::logSentBytes(LinkInterface* link, QByteArray b){
 void MAVLinkProtocol::initializeSocketIfNeeded() {
     if (!_sockInitialized) {
         // Open the socket with specific IP and port
-        _sock = openUDP("127.0.0.1");  // Replace with actual IP and port if needed
+        _sock = openUDP("127.0.0.1");  // Replace with actual IP and port if needed - connects to localhost per default
         if (_sock.sock < 0) {  // Checking if the socket was initialized properly
             qDebug() << "Failed to open UDP socket.";
             return;
@@ -208,6 +208,39 @@ void MAVLinkProtocol::initializeSocketIfNeeded() {
     }
 }
 
+// Helper function for normalizing the quaternion
+void normalizeQuaternion(float* q) {
+    float norm = sqrtf(q[0]*q[0] + q[1]*q[1] + q[2]*q[2] + q[3]*q[3]);
+    q[0] /= norm;
+    q[1] /= norm;
+    q[2] /= norm;
+    q[3] /= norm;
+}
+
+// Function to compute roll, pitch, and yaw from quaternion
+void quaternionToEuler(const float q[4], double* roll, double* pitch, double* yaw) {
+    // Normalize the quaternion first (optional but recommended)
+    normalizeQuaternion((float*)q);
+
+    // Extract the individual components for better readability
+    float q0 = q[0];
+    float q1 = q[1];
+    float q2 = q[2];
+    float q3 = q[3];
+
+    // Roll (X-axis rotation)
+    *roll = atan2(2.0 * (q0 * q1 + q2 * q3), 1.0 - 2.0 * (q1 * q1 + q2 * q2));
+
+    // Pitch (Y-axis rotation)
+    double sinp = 2.0 * (q0 * q2 - q3 * q1);
+    if (fabs(sinp) >= 1.0)
+        *pitch = copysign(M_PI / 2, sinp); // Use 90 degrees if out of range
+    else
+        *pitch = asin(sinp);
+
+    // Yaw (Z-axis rotation)
+    *yaw = atan2(2.0 * (q0 * q3 + q1 * q2), 1.0 - 2.0 * (q2 * q2 + q3 * q3));
+}
 
 void MAVLinkProtocol::handleHilStateQuaternion(const mavlink_message_t& message) {
     mavlink_hil_state_quaternion_t hilState;
@@ -217,13 +250,19 @@ void MAVLinkProtocol::handleHilStateQuaternion(const mavlink_message_t& message)
     double lat = hilState.lat / 1E7;
     double lon = hilState.lon / 1E7;
     double alt = hilState.alt / 1000.0;  // Convert from mm to meters
-    double pitch = 0.0;  // Placeholder, update with actual data if available
-    double roll = 0.0;   // Placeholder, update with actual data if available
-    double yaw = 0.0;    // Placeholder, update with actual data if available
+
+
+    // Variables to hold the resulting angles
+    double roll, pitch, yaw;
+
+    // Calculate roll, pitch, and yaw from the quaternion
+    quaternionToEuler(hilState.attitude_quaternion, &roll, &pitch, &yaw);
+
     double gear = 1.0;   // Gear down by default
 
     initializeSocketIfNeeded();  // Ensure socket is initialized before use
 
+    /*
     if (_sockInitialized) {
         double values[7] = {lat, lon, alt, pitch, roll, yaw, 1.0};  // Example values
         int result = sendPOSI(_sock, values, 7, 0);
@@ -233,6 +272,8 @@ void MAVLinkProtocol::handleHilStateQuaternion(const mavlink_message_t& message)
     } else {
         qDebug() << "Socket not initialized.";
     }
+    */
+
 }
 
 
