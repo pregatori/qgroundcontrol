@@ -68,19 +68,16 @@ MAVLinkProtocol::MAVLinkProtocol(QGCApplication* app, QGCToolbox* toolbox)
     memset(&_message,           0, sizeof(_message));
 
     // Initialize the XPCSocket struct fields
+    /*
     std::memset(&_sock, 0, sizeof(XPCSocket));  // Zero out the structure
     _sock.port = 0;  // Local port (could be set to a specific value if needed)
     std::strcpy(_sock.xpIP, "127.0.0.1");  // Default X-Plane IP
     _sock.xpPort = 49009;  // Default X-Plane port
+    */
 }
 
 MAVLinkProtocol::~MAVLinkProtocol()
 {
-    // Clean up and close the socket
-    if (_sockInitialized) {
-        closeUDP(_sock);  // Pass the pointer to the struct to close the socket
-    }
-
     storeSettings();
     _closeLogFile();
 }
@@ -196,16 +193,43 @@ void MAVLinkProtocol::logSentBytes(LinkInterface* link, QByteArray b){
     }
 }
 
-void MAVLinkProtocol::initializeSocketIfNeeded() {
-    if (!_sockInitialized) {
-        // Open the socket with specific IP and port
-        _sock = openUDP("127.0.0.1");  // Replace with actual IP and port if needed - connects to localhost per default
-        if (_sock.sock < 0) {  // Checking if the socket was initialized properly
-            qDebug() << "Failed to open UDP socket.";
-            return;
+// Specific Functions added to handle Communication with XPlane12
+
+void MAVLinkProtocol::sendTestUDPMessage()
+{
+    // Find the UDP link created for XPlane
+    LinkInterface* xplaneLink = nullptr;
+
+    for (const SharedLinkInterfacePtr& link : _toolbox->linkManager()->links()) {
+        if (link->linkConfiguration()->name() == "XPlane UDP Link") {
+            xplaneLink = link.get();
+            break;
         }
-        _sockInitialized = true;  // Mark socket as initialized
     }
+
+    if (!xplaneLink) {
+        qDebug() << "XPlane UDP Link not found.";
+        return;
+    }
+
+    // Create a simple test message (for example, a 'hello' message)
+    QByteArray messageData;
+    messageData.append("Hello, XPlane!");
+
+    /*
+    // Send the message to XPlane via the UDP link using writeBytesThreadSafe for thread safety
+    if (xplaneLink->isConnected()) {
+        xplaneLink->writeBytesThreadSafe(messageData, messageData.size());
+        qDebug() << "Sent test UDP message to XPlane: 'Hello, XPlane!'";
+    } else {
+        qDebug() << "XPlane UDP Link is not connected.";
+    }*/
+
+    // Attempt to send the message
+    xplaneLink->writeBytesThreadSafe(messageData.data(), messageData.size());
+
+    qDebug() << "Test message sent to XPlane.";
+
 }
 
 // Helper function for normalizing the quaternion
@@ -228,18 +252,18 @@ void quaternionToEuler(const float q[4], double* roll, double* pitch, double* ya
     float q2 = q[2];
     float q3 = q[3];
 
-    // Roll (X-axis rotation)
-    *roll = atan2(2.0 * (q0 * q1 + q2 * q3), 1.0 - 2.0 * (q1 * q1 + q2 * q2));
+    // Roll (X-axis rotation, in degrees)
+    *roll = atan2(2.0 * (q0 * q1 + q2 * q3), 1.0 - 2.0 * (q1 * q1 + q2 * q2)) * (180.0 / M_PI);
 
     // Pitch (Y-axis rotation)
     double sinp = 2.0 * (q0 * q2 - q3 * q1);
     if (fabs(sinp) >= 1.0)
-        *pitch = copysign(M_PI / 2, sinp); // Use 90 degrees if out of range
+        *pitch = copysign(M_PI / 2, sinp) * (180.0 / M_PI); // Use 90 degrees if out of range
     else
-        *pitch = asin(sinp);
+        *pitch = asin(sinp) * (180.0 / M_PI);
 
     // Yaw (Z-axis rotation)
-    *yaw = atan2(2.0 * (q0 * q3 + q1 * q2), 1.0 - 2.0 * (q2 * q2 + q3 * q3));
+    *yaw = atan2(2.0 * (q0 * q3 + q1 * q2), 1.0 - 2.0 * (q2 * q2 + q3 * q3)) * (180.0 / M_PI);
 }
 
 void MAVLinkProtocol::handleHilStateQuaternion(const mavlink_message_t& message) {
@@ -251,7 +275,6 @@ void MAVLinkProtocol::handleHilStateQuaternion(const mavlink_message_t& message)
     double lon = hilState.lon / 1E7;
     double alt = hilState.alt / 1000.0;  // Convert from mm to meters
 
-
     // Variables to hold the resulting angles
     double roll, pitch, yaw;
 
@@ -260,19 +283,23 @@ void MAVLinkProtocol::handleHilStateQuaternion(const mavlink_message_t& message)
 
     double gear = 1.0;   // Gear down by default
 
-    initializeSocketIfNeeded();  // Ensure socket is initialized before use
+    // initializeSocketIfNeeded();  // Ensure socket is initialized before use
 
-    /*
-    if (_sockInitialized) {
-        double values[7] = {lat, lon, alt, pitch, roll, yaw, 1.0};  // Example values
-        int result = sendPOSI(_sock, values, 7, 0);
-        if (result < 0) {
-            qDebug() << "Failed to send POSI command. Error code:" << result;
-        }
-    } else {
-        qDebug() << "Socket not initialized.";
+    // Access the XPC socket via the LinkManager's getter
+    XPCSocket& xpcSock = _toolbox->linkManager()->getXPCSocket();
+
+    //if (_sockInitialized) {
+
+    double values[7] = {lat, lon, alt, pitch, roll, yaw, 1.0};  // Example values
+    int result = sendPOSI(xpcSock, values, 7, 0);
+    if (result < 0) {
+        qDebug() << "Failed to send POSI command. Error code:" << result;
     }
-    */
+
+    //} else {
+    //    qDebug() << "Socket not initialized.";
+    //}
+
 
 }
 

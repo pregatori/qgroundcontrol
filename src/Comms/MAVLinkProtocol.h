@@ -75,6 +75,9 @@ public:
     // Override from QGCTool
     virtual void setToolbox(QGCToolbox *toolbox);
 
+    // Public function to test UDP Communication
+    void sendTestUDPMessage();
+
 public slots:
     /** @brief Receive bytes from a communication interface */
     void receiveBytes(LinkInterface* link, QByteArray b);
@@ -174,7 +177,7 @@ private:
     MultiVehicleManager*    _multiVehicleManager;
 
     // Added to handle communication via XPC
-    XPCSocket _sock;
+    // XPCSocket _sock;
     bool _sockInitialized;  // To track whether the socket has been initialized
     void initializeSocketIfNeeded();
 

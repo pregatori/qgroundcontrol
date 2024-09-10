@@ -18,6 +18,10 @@
     #include "QGCSerialPortInfo.h"
 #endif
 
+extern "C" {
+#include "xplaneConnect.h"
+}
+
 #include <QtCore/QList>
 #include <QtCore/QStringList>
 #include <QtCore/QTimer>
@@ -108,6 +112,20 @@ public:
 
     void disconnectAll(void);
 
+    // Opens a specific UDP connection with XPlane during initialisation
+    void initializeXPlaneUDPConnection();
+
+    XPCSocket _xpcSock;  // Declare this in LinkManager.h
+
+    // Getter for the XPCSocket
+    XPCSocket& getXPCSocket() {
+        return _xpcSock;
+    }
+
+    void sendTestXPCMessage();
+
+    void closeXPCSocket();
+
 #ifdef QT_DEBUG
     // Only used by unit test tp restart after a shutdown
     void restart(void) { setConnectionsAllowed(); }
@@ -134,6 +152,10 @@ public:
     SharedLinkConfigurationPtr addConfiguration(LinkConfiguration* config);
 
     void startAutoConnectedLinks(void);
+
+public slots:
+    void initializeXPlaneUDPLink();
+    void initializeXPlaneXPCSocket();
 
 signals:
     void mavlinkSupportForwardingEnabledChanged();
