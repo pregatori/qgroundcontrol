@@ -154,7 +154,6 @@ public:
     void startAutoConnectedLinks(void);
 
 public slots:
-    void initializeXPlaneUDPLink();
     void initializeXPlaneXPCSocket();
 
 signals:

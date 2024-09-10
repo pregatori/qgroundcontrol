@@ -183,22 +183,6 @@ find_package(Qt6
         ${QT_LIBRARY_HINTS}
 )
 
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(GST REQUIRED gstreamer-1.0)
-pkg_check_modules(GST_APP REQUIRED gstreamer-app-1.0)
-pkg_check_modules(GST_VIDEO REQUIRED gstreamer-video-1.0)
-pkg_check_modules(GST_GL REQUIRED gstreamer-gl-1.0)
-
-include_directories(${GST_INCLUDE_DIRS})
-link_directories(${GST_LIBRARY_DIRS})
-
-target_link_libraries(
-    ${GST_LIBRARIES}
-    ${GST_APP_LIBRARIES}
-    ${GST_VIDEO_LIBRARIES}
-    ${GST_GL_LIBRARIES}
-)
-
 # Require 6.6.3 because otherwise libQt6QuickControls2Basic.so.6 &
 # libQt6QuickControls2BasicStyleImpl.so.6 are missing.
 qt_standard_project_setup(REQUIRES 6.6.3)
@@ -313,10 +297,10 @@ elseif(MACOS)
 
     # Specify the architectures to build for (ensures compatibility to both mac chips)
     # set(CMAKE_OSX_ARCHITECTURES "x86_64; arm64" CACHE STRING "Build architectures for macOS")
-    set(CMAKE_OSX_ARCHITECTURES "x86_64; arm64" CACHE STRING "" FORCE)
+    # set(CMAKE_OSX_ARCHITECTURES "x86_64; arm64" CACHE STRING "" FORCE)
     set(APPLE_MULTIPLE_ARCHITECTURES ON)
 
-    set(CMAKE_DISABLE_PRECOMPILE_HEADERS ON)
+    # set(CMAKE_DISABLE_PRECOMPILE_HEADERS ON)
 
     # If not already set, make sure to specify minimum macOS version (optional)
     set(CMAKE_OSX_DEPLOYMENT_TARGET "10.14" CACHE STRING "Minimum OS X deployment version")

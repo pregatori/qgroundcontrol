@@ -132,10 +132,6 @@ bool UDPLink::_isIpLocal(const QHostAddress& add)
     return false;
 }
 
-void UDPLink::sendBytes(const QByteArray& data) {
-    _writeBytes(data);
-}
-
 void UDPLink::_writeBytes(const QByteArray &data)
 {
     if (!_socket) {

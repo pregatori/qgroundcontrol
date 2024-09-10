@@ -27,8 +27,10 @@ extern "C" {
 
 #include <QtQml/QtQml>
 
+/*
 #include <QByteArray> // used with UDPLink
 #include <QDataStream> // used with UDPLink
+*/
 
 Q_DECLARE_METATYPE(mavlink_message_t)
 
@@ -193,44 +195,6 @@ void MAVLinkProtocol::logSentBytes(LinkInterface* link, QByteArray b){
     }
 }
 
-// Specific Functions added to handle Communication with XPlane12
-
-void MAVLinkProtocol::sendTestUDPMessage()
-{
-    // Find the UDP link created for XPlane
-    LinkInterface* xplaneLink = nullptr;
-
-    for (const SharedLinkInterfacePtr& link : _toolbox->linkManager()->links()) {
-        if (link->linkConfiguration()->name() == "XPlane UDP Link") {
-            xplaneLink = link.get();
-            break;
-        }
-    }
-
-    if (!xplaneLink) {
-        qDebug() << "XPlane UDP Link not found.";
-        return;
-    }
-
-    // Create a simple test message (for example, a 'hello' message)
-    QByteArray messageData;
-    messageData.append("Hello, XPlane!");
-
-    /*
-    // Send the message to XPlane via the UDP link using writeBytesThreadSafe for thread safety
-    if (xplaneLink->isConnected()) {
-        xplaneLink->writeBytesThreadSafe(messageData, messageData.size());
-        qDebug() << "Sent test UDP message to XPlane: 'Hello, XPlane!'";
-    } else {
-        qDebug() << "XPlane UDP Link is not connected.";
-    }*/
-
-    // Attempt to send the message
-    xplaneLink->writeBytesThreadSafe(messageData.data(), messageData.size());
-
-    qDebug() << "Test message sent to XPlane.";
-
-}
 
 // Helper function for normalizing the quaternion
 void normalizeQuaternion(float* q) {
@@ -283,24 +247,14 @@ void MAVLinkProtocol::handleHilStateQuaternion(const mavlink_message_t& message)
 
     double gear = 1.0;   // Gear down by default
 
-    // initializeSocketIfNeeded();  // Ensure socket is initialized before use
-
     // Access the XPC socket via the LinkManager's getter
     XPCSocket& xpcSock = _toolbox->linkManager()->getXPCSocket();
-
-    //if (_sockInitialized) {
 
     double values[7] = {lat, lon, alt, pitch, roll, yaw, 1.0};  // Example values
     int result = sendPOSI(xpcSock, values, 7, 0);
     if (result < 0) {
         qDebug() << "Failed to send POSI command. Error code:" << result;
     }
-
-    //} else {
-    //    qDebug() << "Socket not initialized.";
-    //}
-
-
 }
 
 
@@ -468,14 +422,6 @@ void MAVLinkProtocol::receiveBytes(LinkInterface* link, QByteArray b)
 
                 handleHilStateQuaternion(_message);
             }
-
-
-                /* Probably not needed as the
-                mavlink_hil_state_quaternion_t hilStateQuaternion;
-                mavlink_msg_hil_state_quaternion_decode(&_message, &hilStateQuaternion);
-                // HIL_STATE_QUATERNION does not provide autopilot or type information, generic is our safest bet
-                emit vehicleHeartbeatInfo(link, _message.sysid, _message.compid, MAV_AUTOPILOT_GENERIC, MAV_TYPE_GENERIC);
-                */
 
 #if 0
             // Given the current state of SiK Radio firmwares there is no way to make the code below work.

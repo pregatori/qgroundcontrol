@@ -103,8 +103,6 @@ void LinkManager::setToolbox(QGCToolbox *toolbox)
 
     // Call initializeXPlaneUDPLink after toolbox is set
     QTimer::singleShot(5000, this, SLOT(initializeXPlaneXPCSocket()));  // 5-second delay
-
-    //initializeXPlaneUDPLink();  // Add this line to initialize XPlane UDP link
 }
 
 // This should only be used by Qml code
@@ -408,38 +406,6 @@ void LinkManager::_addUDPAutoConnectLink(void)
     }
 }
 
-void LinkManager::initializeXPlaneUDPLink()
-{
-    // Create a new UDP configuration for XPlane communication
-    qDebug() << "Initializing XPlane UDP Link...";
-    UDPConfiguration* udpConfig = new UDPConfiguration("XPlane UDP Link");
-
-    // Set XPlane’s IP address and listening port (XPlane typically listens on port 49009)
-    udpConfig->addHost("127.0.0.1", 49009);  // Replace with actual IP if XPlane is on a different machine
-
-    // Mark it as a dynamic configuration (optional, based on your use case)
-    udpConfig->setDynamic(true);
-
-    // Add the configuration to the list of links
-    SharedLinkConfigurationPtr config = addConfiguration(udpConfig);
-    if (!config) {
-        qDebug() << "Failed to create XPlane UDP Link configuration.";
-        return;
-    }
-
-    // Create the link and connect it
-    bool linkCreated = createConnectedLink(config);
-    if (!linkCreated) {
-        qDebug() << "Failed to create and connect XPlane UDP Link.";
-    } else {
-        qDebug() << "XPlane UDP Link created and connected successfully.";
-    }
-
-    // Call the function to send the test message
-
-    _toolbox->mavlinkProtocol()->sendTestUDPMessage();
-}
-
 void LinkManager::initializeXPlaneXPCSocket()
 {
     // Initialize the XPC socket
@@ -452,8 +418,6 @@ void LinkManager::initializeXPlaneXPCSocket()
 
     _xpcSock = xpcSock;  // Store the XPC socket in a member variable
     qDebug() << "XPC UDP socket initialized successfully.";
-
-    //sendTestXPCMessage();
 }
 
 // Function to close the XPC socket
@@ -483,34 +447,6 @@ void LinkManager::sendTestXPCMessage()
         qDebug() << "POSI message sent successfully to X-Plane.";
     }
 }
-
-/*
-void LinkManager::initializeXPlaneUDPConnection()
-{
-    if (!_xplaneSockInitialized) {
-        // Check if XPlane is available by attempting to connect
-        _xplaneSock = openUDP("127.0.0.1", 49009);  // XPlane uses port 49009 by default
-        if (_xplaneSock.sock < 0) {
-            qDebug() << "XPlane not available. Skipping UDP connection.";
-            return;  // XPlane is not running, so skip initialization
-        }
-        qDebug() << "XPlane UDP connection initialized.";
-        _xplaneSockInitialized = true;
-    }
-}
-
-void LinkManager::checkXPlaneConnectionBeforeSending()
-{
-    // If the connection is not initialized, try to initialize it
-    if (!_xplaneSockInitialized) {
-        initializeXPlaneUDPConnection();
-    }
-
-    // Check if the connection is now valid
-    if (_xplaneSockInitialized) {
-        // Send data to XPlane here...
-    }
-}*/
 
 void LinkManager::_addMAVLinkForwardingLink(void)
 {

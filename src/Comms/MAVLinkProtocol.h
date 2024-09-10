@@ -75,9 +75,6 @@ public:
     // Override from QGCTool
     virtual void setToolbox(QGCToolbox *toolbox);
 
-    // Public function to test UDP Communication
-    void sendTestUDPMessage();
-
 public slots:
     /** @brief Receive bytes from a communication interface */
     void receiveBytes(LinkInterface* link, QByteArray b);
@@ -152,10 +149,6 @@ signals:
 
     /// Emitted when a telemetry log is started to save.
     void checkTelemetrySavePath(void);
-
-//    /// Formats the message according to the XPC protocol to send it with UDPLink to XPlane
-//    void MAVLinkProtocol::sendPosiMessage(UDPLink* udpLink, double lat, double lon, double alt, double pitch, double roll, double yaw, double gear);
-
 
 private slots:
     void _vehicleCountChanged(void);

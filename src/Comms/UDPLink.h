@@ -105,8 +105,6 @@ public:
     // QThread overrides
     void run(void) override;
 
-    void sendBytes(const QByteArray& data);  // Added public function to be used to send data following the XPC protocol
-
 public slots:
     void readBytes(void);
 
